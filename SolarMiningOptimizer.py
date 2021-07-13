@@ -12,17 +12,23 @@ from selenium.webdriver.chrome.options import Options
 ####################
 ####  CONSTANTS  ###
 ####################
-SMA_URL = "https://LOCAL_IP_OF_SMA_INVERTER/#/smartView"
+WINDOWS_USER = "TODO BY YOU"  # TODO BY YOU
+NH_EMAIL = "TODO BY YOU"  # TODO BY YOU
+NH_PASSWORD = "TODO BY YOU"  # TODO BY YOU
+# URL-Constants
+SMA_URL = "https://192.168.1.103/#/smartView"
 NH_URL = "https://www.nicehash.com/my/mining/rigs"
 # GPU-Constants
 ASUS_GTX1080TI = 1
 MSI_GTX1080TI = 2
 ZOTAC_GTX1080 = 3
 # Selenium-Constants
-CHROME_USER_DATA_PATH = "C:\\Users\\USER\\AppData\\Local\\Google\\Chrome\\User Data"
+CHROME_USER_DATA_PATH = (
+    "C:\\Users\\" + WINDOWS_USER + "\\AppData\\Local\\Google\\Chrome\\User Data"
+)
 # Adjustment-Constants
-PROFITABILITY_THRESHHOLD_1 = 12  # EURO
-PROFITABILITY_THRESHHOLD_2 = 20  # EURO
+PROFITABILITY_THRESHHOLD_1 = 4  # EURO
+PROFITABILITY_THRESHHOLD_2 = 6.5  # EURO
 WATTAGE_THRESHHOLD = 1000  # WATT
 CHECK_INTERVAL = 1000  # SEC
 # GPU-PowerMode Constants
@@ -37,6 +43,11 @@ ULTRA_LOW_POWER_MODE = 0
 LOW_POWER_MODE = 1
 EFFICIENCY_MODE = 2
 HIGH_POWER_MODE = 3
+# PowerMode-Profitability-Constants
+ULTRA_LOW_POWER_PROF_FACTOR = 1.0
+LOW_POWER_PROF_FACTOR = 1.1
+EFFICIENCY_PROF_FACTOR = 1.2
+HIGH_POWER_PROF_FACTOR = 1.3
 
 ###################
 ###  VARIABLES  ###
@@ -45,7 +56,7 @@ seleniumDriver = None
 currentPVPower = 0
 currentProfitability = 0
 asusGTX1080TiDeactivated = False
-currentPowerMode = EFFICIENCY_MODE
+currentPowerMode = ULTRA_LOW_POWER_MODE
 newPowerMode = LOW_POWER_MODE
 
 # WebDriver Options
@@ -76,7 +87,7 @@ def login():
     )
     email.click()
     email.clear()
-    email.send_keys("EMAIL")
+    email.send_keys(NH_EMAIL)
 
     # Enter password
     password = seleniumDriver.find_element_by_css_selector(
@@ -84,7 +95,7 @@ def login():
     )
     password.click()
     password.clear()
-    password.send_keys("PASSWORD")
+    password.send_keys(NH_PASSWORD)
 
     # Click "Stay logged in" if not already selected
     if not (seleniumDriver.find_element_by_css_selector("#checkbox22").is_selected()):
@@ -101,7 +112,6 @@ def login():
     time.sleep(10)
 
 
-# TODO: TEST
 def getPVPower():
     # Get current PV-Power Output
     try:
@@ -115,7 +125,7 @@ def getPVPower():
     except:
         print(
             datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-            + ": No power or could not get power output from SMA-Inverter."
+            + ": No power or could not get power output from SMA-Inverter"
         )
         currentPower = 0
     # Print current PV-Power Output
@@ -141,28 +151,31 @@ def getProfitability():
     # Get current profitability
     currentProfitability = float(
         seleniumDriver.find_element_by_css_selector(
-            "#content > div.container-full-whitex > div.container.status-header > div > div.col-md-3.col-sm-8.text-center > div > div.fiat"
-        ).text.replace("≈ €", "")
+            "#content > div.container-full-whitex > div:nth-child(5) > div > div > div.rigs.list-view > div:nth-child(2) > div > div.col.profitability.text-right.pointer > div:nth-child(2) > span"
+        )
+        .text.replace("€", "")
+        .replace(" / 24h", "")
     )
     # Print current profitability
     print(
         datetime.now().strftime("%d/%m/%Y %H:%M:%S")
         + ": Current profitability: "
         + str(currentProfitability)
-        + "€"
+        + "€/24h"
     )
 
 
-# TODO: TEST
 def changePowerModeOfGPU(indexGPU, powerMode):
     global seleniumDriver
-    expandMiningRIG()
 
     if indexGPU == MSI_GTX1080TI:
         # Open Power-Modes for MSI GTX1080Ti
         seleniumDriver.find_element_by_css_selector(
-            "#content > div.container-full-whitex > div:nth-child(5) > div > div > div.rigs.list-view > div:nth-child(2) > div > div.col.name"
+            "#content > div.container-full-whitex > div:nth-child(5) > div > div > div.rigs.list-view > div.show-devices > div:nth-child(1) > div > div.col.controls.text-right > div"
         ).click()
+
+        # Wait until Power-Modes are open
+        time.sleep(1)
 
         # Change PowerMode
         if powerMode == LITE:
@@ -186,7 +199,7 @@ def changePowerModeOfGPU(indexGPU, powerMode):
                 "#content > div.container-full-whitex > div:nth-child(5) > div > div > div.rigs.list-view > div.show-devices > div:nth-child(1) > div > div.col.controls.text-right > div > div.dropdown.flex.flex--no-wrap > div > div:nth-child(5)"
             ).click()
         elif powerMode == EFFICIENT:
-            # Select "EfficientLow" Power-Mode for MSI GTX1080Ti
+            # Select "Efficient" Power-Mode for MSI GTX1080Ti
             seleniumDriver.find_element_by_css_selector(
                 "#content > div.container-full-whitex > div:nth-child(5) > div > div > div.rigs.list-view > div.show-devices > div:nth-child(1) > div > div.col.controls.text-right > div > div.dropdown.flex.flex--no-wrap > div > div:nth-child(6)"
             ).click()
@@ -197,10 +210,16 @@ def changePowerModeOfGPU(indexGPU, powerMode):
             ).click()
 
     elif indexGPU == ASUS_GTX1080TI:
+        # Deactivate ASUS GTX1080Ti
+        switchASUSGTX1080Ti(True)
+
         # Open Power-Modes for ASUS GTX1080Ti
         seleniumDriver.find_element_by_css_selector(
-            "#content > div.container-full-whitex > div:nth-child(5) > div > div > div.rigs.list-view > div.show-devices > div:nth-child(2) > div > div.col.controls.text-right > div > div.field"
+            "#content > div.container-full-whitex > div:nth-child(5) > div > div > div.rigs.list-view > div.show-devices > div:nth-child(2) > div > div.col.controls.text-right > div"
         ).click()
+
+        # Wait until Power-Modes are open
+        time.sleep(1)
 
         # Change PowerMode
         if powerMode == LITE:
@@ -224,9 +243,9 @@ def changePowerModeOfGPU(indexGPU, powerMode):
                 "#content > div.container-full-whitex > div:nth-child(5) > div > div > div.rigs.list-view > div.show-devices > div:nth-child(2) > div > div.col.controls.text-right > div > div.dropdown.flex.flex--no-wrap > div > div:nth-child(5)"
             ).click()
         elif powerMode == EFFICIENT:
-            # Select "EfficientLow" Power-Mode for ASUS GTX1080Ti
+            # Select "Efficient" Power-Mode for ASUS GTX1080Ti
             seleniumDriver.find_element_by_css_selector(
-                "#content > div.container-full-whitex > div:nth-child(5) > div > div > div.rigs.list-view > div.show-devices > div:nth-child(2) > div > div.col.controls.text-right > div > div.dropdown.flex.flex--no-wrap > div > div:nth-child(6)"
+                "#content > div.container-full-whitex > div:nth-child(5) > div > div > div.rigs.list-view > div.show-devices > div:nth-child(2) > div > div.col.controls.text-right > div > div.dropdown.flex.flex--no-wrap > div > div.option.selected.border-top > span"
             ).click()
         elif powerMode == EFFICIENT_LOW:
             # Select "EfficientLow" Power-Mode for ASUS GTX1080Ti
@@ -237,8 +256,11 @@ def changePowerModeOfGPU(indexGPU, powerMode):
     elif indexGPU == ZOTAC_GTX1080:
         # Open Power-Modes for ZOTAC GTX1080
         seleniumDriver.find_element_by_css_selector(
-            "#content > div.container-full-whitex > div:nth-child(5) > div > div > div.rigs.list-view > div.show-devices > div:nth-child(3) > div > div.col.controls.text-right > div > div.field"
+            "#content > div.container-full-whitex > div:nth-child(5) > div > div > div.rigs.list-view > div.show-devices > div:nth-child(3) > div > div.col.controls.text-right > div"
         ).click()
+
+        # Wait until Power-Modes are open
+        time.sleep(1)
 
         # Change PowerMode
         if powerMode == LITE:
@@ -271,29 +293,41 @@ def changePowerModeOfGPU(indexGPU, powerMode):
     time.sleep(2)
 
 
-def switchASUSGTX1080TI():
+def switchASUSGTX1080Ti(mode):
     global seleniumDriver
 
-    if isASUSGTX1080TIActivated():
+    if isASUSGTX1080TiActivated() and mode:
         print(
             datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-            + ": Deactivating ASUS GTX1080Ti"
+            + ": ASUS GTX1080Ti is already activated"
+        )
+    elif not isASUSGTX1080TiActivated() and not mode:
+        print(
+            datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+            + ": ASUS GTX1080Ti is already deactivated"
         )
     else:
-        print(
-            datetime.now().strftime("%d/%m/%Y %H:%M:%S") + ": Activating ASUS GTX1080Ti"
-        )
+        if not mode:
+            print(
+                datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+                + ": Deactivating ASUS GTX1080Ti"
+            )
+        else:
+            print(
+                datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+                + ": Activating ASUS GTX1080Ti"
+            )
 
-    # Switch ASUS GTX1080Ti
-    seleniumDriver.find_element_by_css_selector(
-        "#content > div.container-full-whitex > div:nth-child(5) > div > div > div.rigs.list-view > div.show-devices > div:nth-child(2) > div > div.col.controls.text-right > label > span"
-    ).click()
+        # Switch ASUS GTX1080Ti
+        seleniumDriver.find_element_by_css_selector(
+            "#content > div.container-full-whitex > div:nth-child(5) > div > div > div.rigs.list-view > div.show-devices > div:nth-child(2) > div > div.col.controls.text-right > label > span"
+        ).click()
 
-    # Wait for GPU to turn on/off
-    time.sleep(5)
+        # Wait for GPU to turn on/off
+        time.sleep(5)
 
 
-def isASUSGTX1080TIActivated():
+def isASUSGTX1080TiActivated():
     global seleniumDriver
 
     if "disabled" in seleniumDriver.find_element_by_css_selector(
@@ -319,6 +353,10 @@ atexit.register(exit_handler)
 # Clear console in startup
 os.system("cls")
 print(datetime.now().strftime("%d/%m/%Y %H:%M:%S") + ": SolarMiningOptimizer started")
+
+# Wait until NH-MiningManager shows RIG, if this script is started with Windows on the RIG directly
+time.sleep(30)
+
 while True:
     try:
         # Start Selenium-Driver for SMA
@@ -358,15 +396,53 @@ while True:
             newPowerMode = HIGH_POWER_MODE
 
         elif currentPVPower < WATTAGE_THRESHHOLD:
-            if currentProfitability < PROFITABILITY_THRESHHOLD_1:
+            # Save current profitability factor
+            if currentPowerMode == ULTRA_LOW_POWER_MODE:
+                print(
+                    datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+                    + ": Current Power-Mode: Ultra-Low-Power-Mode"
+                )
+                currentProfitabilityFactor = ULTRA_LOW_POWER_PROF_FACTOR
+
+            elif currentPowerMode == LOW_POWER_MODE:
+                print(
+                    datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+                    + ": Current Power-Mode: Low-Power-Mode"
+                )
+                currentProfitabilityFactor = LOW_POWER_PROF_FACTOR
+
+            elif currentPowerMode == EFFICIENCY_MODE:
+                print(
+                    datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+                    + ": Current Power-Mode: Efficiency-Mode"
+                )
+                currentProfitabilityFactor = EFFICIENCY_PROF_FACTOR
+
+            elif currentPowerMode == HIGH_POWER_MODE:
+                print(
+                    datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+                    + ": Current Power-Mode: High-Power-Mode"
+                )
+                currentProfitabilityFactor = HIGH_POWER_PROF_FACTOR
+
+            # Choose matching new Power-Mode
+            if currentProfitability < (
+                PROFITABILITY_THRESHHOLD_1 * currentProfitabilityFactor
+            ):
                 newPowerMode = ULTRA_LOW_POWER_MODE
-            elif currentProfitability < PROFITABILITY_THRESHHOLD_2:
+            elif currentProfitability < (
+                PROFITABILITY_THRESHHOLD_2 * currentProfitabilityFactor
+            ):
                 newPowerMode = LOW_POWER_MODE
-            elif currentProfitability >= PROFITABILITY_THRESHHOLD_2:
+            elif currentProfitability >= (
+                PROFITABILITY_THRESHHOLD_2 * currentProfitabilityFactor
+            ):
                 newPowerMode = EFFICIENCY_MODE
 
         # Change Power-Modes
         if currentPowerMode != newPowerMode:
+            expandMiningRIG()
+
             # Ultra-Low-Power-Mode
             if newPowerMode == ULTRA_LOW_POWER_MODE:
                 print(
@@ -378,7 +454,7 @@ while True:
                 changePowerModeOfGPU(MSI_GTX1080TI, EFFICIENT_LOW)
 
                 # Deactivate ASUS GTX1080Ti
-                switchASUSGTX1080TI(False)
+                switchASUSGTX1080Ti(False)
 
                 # Select "EfficientLow" Power-Mode
                 changePowerModeOfGPU(ZOTAC_GTX1080, EFFICIENT_LOW)
@@ -425,8 +501,8 @@ while True:
                 # Select "High" Power-Mode for MSI GTX1080Ti
                 changePowerModeOfGPU(MSI_GTX1080TI, HIGH)
 
-                # Select "Efficient" Power-Mode for ASUS GTX1080Ti
-                changePowerModeOfGPU(ASUS_GTX1080TI, EFFICIENT)
+                # Select "High" Power-Mode for ASUS GTX1080Ti
+                changePowerModeOfGPU(ASUS_GTX1080TI, HIGH)
 
                 # Select "High" Power-Mode for ZOTAC GTX1080
                 changePowerModeOfGPU(ZOTAC_GTX1080, HIGH)
