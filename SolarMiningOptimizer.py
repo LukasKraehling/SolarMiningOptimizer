@@ -12,11 +12,12 @@ from selenium.webdriver.chrome.options import Options
 ####################
 ####  CONSTANTS  ###
 ####################
-WINDOWS_USER = "TODO BY YOU"  # TODO BY YOU
-NH_EMAIL = "TODO BY YOU"  # TODO BY YOU
-NH_PASSWORD = "TODO BY YOU"  # TODO BY YOU
+WINDOWS_USER = "" # TODO FILL YOURSELF
+NH_EMAIL = "" # TODO FILL YOURSELF
+NH_PASSWORD = "" # TODO FILL YOURSELF
+SMA_INVERTER_IP = "" # TODO FILL YOURSELF
 # URL-Constants
-SMA_URL = "https://192.168.1.103/#/smartView"
+SMA_URL = "https://" + SMA_INVERTER_IP + "/#/smartView"
 NH_URL = "https://www.nicehash.com/my/mining/rigs"
 # GPU-Constants
 ASUS_GTX1080TI = 1
@@ -31,6 +32,9 @@ PROFITABILITY_THRESHHOLD_1 = 4  # EURO
 PROFITABILITY_THRESHHOLD_2 = 6.5  # EURO
 WATTAGE_THRESHHOLD = 1000  # WATT
 CHECK_INTERVAL = 1000  # SEC
+DELAY_SHORT = 3  # SEC
+DELAY_MEDIUM = 6  # SEC
+DELAY_LONG = 30  # SEC
 # GPU-PowerMode Constants
 LITE = 0
 MEDIUM = 1
@@ -109,7 +113,7 @@ def login():
     ).click()
 
     # Wait for login to finish
-    time.sleep(10)
+    time.sleep(DELAY_MEDIUM)
 
 
 def getPVPower():
@@ -144,7 +148,7 @@ def expandMiningRIG():
     ).click()
 
     # Wait for RIG to expand
-    time.sleep(1)
+    time.sleep(DELAY_SHORT)
 
 
 def getProfitability():
@@ -175,7 +179,7 @@ def changePowerModeOfGPU(indexGPU, powerMode):
         ).click()
 
         # Wait until Power-Modes are open
-        time.sleep(1)
+        time.sleep(DELAY_SHORT)
 
         # Change PowerMode
         if powerMode == LITE:
@@ -210,16 +214,21 @@ def changePowerModeOfGPU(indexGPU, powerMode):
             ).click()
 
     elif indexGPU == ASUS_GTX1080TI:
-        # Deactivate ASUS GTX1080Ti
+        # Activate ASUS GTX1080Ti
         switchASUSGTX1080Ti(True)
 
         # Open Power-Modes for ASUS GTX1080Ti
-        seleniumDriver.find_element_by_css_selector(
-            "#content > div.container-full-whitex > div:nth-child(5) > div > div > div.rigs.list-view > div.show-devices > div:nth-child(2) > div > div.col.controls.text-right > div"
-        ).click()
+        try:
+            seleniumDriver.find_element_by_css_selector(
+                "#content > div.container-full-whitex > div:nth-child(5) > div > div > div.rigs.list-view > div.show-devices > div:nth-child(2) > div > div.col.controls.text-right > div"
+            ).click()
+        except:  # If Power-Modes are not visible, the "OPTIMIZE"-Button is
+            seleniumDriver.find_element_by_css_selector(
+                "#content > div.container-full-whitex > div:nth-child(5) > div > div > div.rigs.list-view > div.show-devices > div:nth-child(2) > div > div.col.controls.text-right > button"
+            ).click()
 
         # Wait until Power-Modes are open
-        time.sleep(1)
+        time.sleep(DELAY_SHORT)
 
         # Change PowerMode
         if powerMode == LITE:
@@ -245,7 +254,7 @@ def changePowerModeOfGPU(indexGPU, powerMode):
         elif powerMode == EFFICIENT:
             # Select "Efficient" Power-Mode for ASUS GTX1080Ti
             seleniumDriver.find_element_by_css_selector(
-                "#content > div.container-full-whitex > div:nth-child(5) > div > div > div.rigs.list-view > div.show-devices > div:nth-child(2) > div > div.col.controls.text-right > div > div.dropdown.flex.flex--no-wrap > div > div.option.selected.border-top > span"
+                "#content > div.container-full-whitex > div:nth-child(5) > div > div > div.rigs.list-view > div.show-devices > div:nth-child(2) > div > div.col.controls.text-right > div > div.dropdown.flex.flex--no-wrap > div > div:nth-child(6)"
             ).click()
         elif powerMode == EFFICIENT_LOW:
             # Select "EfficientLow" Power-Mode for ASUS GTX1080Ti
@@ -260,7 +269,7 @@ def changePowerModeOfGPU(indexGPU, powerMode):
         ).click()
 
         # Wait until Power-Modes are open
-        time.sleep(1)
+        time.sleep(DELAY_SHORT)
 
         # Change PowerMode
         if powerMode == LITE:
@@ -290,7 +299,7 @@ def changePowerModeOfGPU(indexGPU, powerMode):
             ).click()
 
     # Wait for Power-Modes to change
-    time.sleep(2)
+    time.sleep(DELAY_SHORT)
 
 
 def switchASUSGTX1080Ti(mode):
@@ -324,7 +333,7 @@ def switchASUSGTX1080Ti(mode):
         ).click()
 
         # Wait for GPU to turn on/off
-        time.sleep(5)
+        time.sleep(DELAY_SHORT)
 
 
 def isASUSGTX1080TiActivated():
@@ -355,14 +364,14 @@ os.system("cls")
 print(datetime.now().strftime("%d/%m/%Y %H:%M:%S") + ": SolarMiningOptimizer started")
 
 # Wait until NH-MiningManager shows RIG, if this script is started with Windows on the RIG directly
-time.sleep(30)
+time.sleep(DELAY_LONG)
 
 while True:
     try:
         # Start Selenium-Driver for SMA
         seleniumDriver = webdriver.Chrome(options=optionsSMA)
         seleniumDriver.get(SMA_URL)
-        time.sleep(5)
+        time.sleep(DELAY_SHORT)
 
         # Get current PV-Power Output
         getPVPower()
@@ -373,7 +382,7 @@ while True:
         # Start Selenium-Driver for NiceHash
         seleniumDriver = webdriver.Chrome(options=optionsNH)
         seleniumDriver.get(NH_URL)
-        time.sleep(5)
+        time.sleep(DELAY_SHORT)
 
         # Check if RIG-Manager is loaded or if a login is needed
         try:
@@ -509,10 +518,10 @@ while True:
 
         # No Power-Mode change
         else:
-            print(datetime.now().strftime("%d/%m/%Y %H:%M:%S") + ": No Change")
+            print("\n" + datetime.now().strftime("%d/%m/%Y %H:%M:%S") + ": No Change")
 
         # Wait for changes to take effect
-        time.sleep(3)
+        time.sleep(DELAY_SHORT)
         seleniumDriver.quit()
 
         time.sleep(CHECK_INTERVAL)
